@@ -2,9 +2,9 @@ import { exec } from 'child_process'
 import * as fs from 'fs'
 import * as net from 'net'
 import * as path from 'path'
-import * as request from 'request'
 import * as wol from 'wake_on_lan'
 import * as WebSocket from 'ws'
+import axios from 'axios'
 import { KEYS } from './keys'
 import Logger from './logger'
 import { Configuration, WSData, App, Command } from './types'
@@ -258,55 +258,52 @@ class Samsung {
     this.LOGGER.log('videoId', { videoId }, 'openYouTubeLink')
 
     return new Promise((resolve, reject) => {
-      request.post(
+      axios.post(
         'http://' + this.IP + ':8080/ws/apps/YouTube',
+        videoId,
         {
           headers: {
             'Content-Type': 'text/plain',
             'Content-Length': Buffer.byteLength(videoId),
           },
           timeout: 10000,
-          body: videoId,
-        },
-        (err, response) => {
-          if (!err) {
-            this.LOGGER.log(
-              'Link sent',
-              { status: response.statusCode, body: response.body, headers: response.headers },
-              'openYouTubeLink',
-            )
-            resolve('Link sent')
-          } else {
-            this.LOGGER.error('While send a link, somthing went wrong', { err }, 'openYouTubeLink')
-            reject(err)
-          }
-        },
+        }
       )
+        .then(response => {
+          this.LOGGER.log(
+            'Link sent',
+            { status: response.status, data: response.data, headers: response.headers },
+            'openYouTubeLink',
+          );
+          resolve('Link sent');
+        })
+        .catch(err => {
+          this.LOGGER.error('While sending a link, something went wrong', { err }, 'openYouTubeLink');
+          reject(err);
+        });
     })
   }
 
   public isAvailable(): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      request.get(
-        { url: `http://${this.IP}:8001${this.PORT === 55000 ? '/ms/1.0/' : '/api/v2/'}`, timeout: 3000 },
-        (err: Error, res: request.RequestResponse) => {
-          if (err) {
-            return reject(err)
-          }
-
-          if (!err && res.statusCode === 200) {
+      axios.get(`http://${this.IP}:8001${this.PORT === 55000 ? '/ms/1.0/' : '/api/v2/'}`, { timeout: 3000 })
+        .then(res => {
+          if (res.status === 200) {
             this.LOGGER.log(
               'TV is available',
-              { request: res.request, body: res.body as string, code: res.statusCode },
+              { request: res.request, data: res.data, code: res.status },
               'isAvailable',
-            )
-            resolve(true)
+            );
+            resolve(true);
           } else {
-            this.LOGGER.error('TV is not available', { err }, 'isAvailable')
-            resolve(false)
+            this.LOGGER.error('TV is not available', {}, 'isAvailable');
+            resolve(false);
           }
-        },
-      )
+        })
+        .catch(err => {
+          this.LOGGER.error('TV is not available', { err }, 'isAvailable');
+          reject(err);
+        });
     })
   }
 
@@ -529,7 +526,7 @@ class Samsung {
       console.log('Token saved!')
     } catch (err) {
       console.log('File error!')
-      this.LOGGER.error('catch fil esave', { err }, '_saveTokenToFile')
+      this.LOGGER.error('catch file save', { err }, '_saveTokenToFile')
     }
   }
 

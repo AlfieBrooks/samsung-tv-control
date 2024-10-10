@@ -1,7 +1,9 @@
+import axios from 'axios'
 import Samsung from '../samsung'
 import * as fs from 'fs'
 
 jest.mock('fs')
+jest.mock('axios')
 
 describe('test config', () => {
   it('empty ip', () => {
@@ -91,6 +93,7 @@ describe('Minimal config', () => {
   })
 
   it('should sendYouTubeLink', () => {
+    jest.spyOn(axios, 'post').mockImplementation(() => Promise.resolve({ data: { data: 'data' } }))
     const spy = jest.spyOn(control, 'openYouTubeLink')
     control.openYouTubeLink('https://www.youtube.com/watch?v=1111111')
 
@@ -117,7 +120,9 @@ describe('saveToken', () => {
 
   it('should correct save with exeption while save', () => {
     // @ts-ignore
-    jest.spyOn(fs, 'writeFileSync').mockRejectedValue('error')
+    jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {
+      throw new Error('error')
+    })
     jest.spyOn(fs, 'accessSync')
 
     // @ts-ignore
@@ -126,7 +131,7 @@ describe('saveToken', () => {
     expect(fs.writeFileSync).toHaveBeenCalled()
   })
 
-  it('should correct read with exeption while read', () => {
+  it('should correct read with exception while read', () => {
     jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
       throw new Error('error')
     })

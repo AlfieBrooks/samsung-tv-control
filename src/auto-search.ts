@@ -1,6 +1,6 @@
 import * as dgram from 'dgram'
 import { Client, SsdpHeaders } from 'node-ssdp'
-import * as request from 'request'
+import axios from 'axios'
 
 const SAMSUNG_TV_URN = 'urn:samsung.com:device'
 
@@ -74,23 +74,24 @@ class AutoSearch {
     this.IPs.push(rinfo.address)
 
     // TODO Add rotation Urls
-    request.get({ url: `http://${rinfo.address}:8001/api/v2/` }, (err: Error, res, body: string) => {
-      if (err || res.statusCode !== 200) {
-        return
-      }
+    axios.get(`http://${rinfo.address}:8001/api/v2/`)
+      .then(response => {
+        if (response.status !== 200) {
+          return;
+        }
 
-      const data: SamsungInfo = JSON.parse(body) as SamsungInfo
+        const data: SamsungInfo = response.data as SamsungInfo;
 
-      this.TVs.push({
-        ip: data.device.ip,
-        model: data.device.modelName,
-        name: data.device.name,
-        wifiMac: data.device.wifiMac,
+        this.TVs.push({
+          ip: data.device.ip,
+          model: data.device.modelName,
+          name: data.device.name,
+          wifiMac: data.device.wifiMac,
+        });
       })
-    })
   }
 
-  private stopSearch(resolve: (data: TV[]) => void) {
+  private stopSearch(resolve: (data: TV[]) => void, reject: (reason?: any) => void) {
     this.client.stop()
     resolve(this.TVs)
   }
